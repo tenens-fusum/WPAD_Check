@@ -1,0 +1,52 @@
+############################################################################
+#
+#  GIT:             https://github.com/tenens-fusum/WPAD_Check/
+#  Date created:   	16/05/2019
+#  Version: 		1.0 
+#  Description: 	Script to check WPAD
+#
+############################################################################
+
+#EMAILs
+$EmailRecipients = 'Email','Email2'
+$SENDEREMAIL = 'Email'
+$SMTPServer = 'SMTP_Server'
+#
+$ISAName = (Get-WmiObject win32_computersystem).DNSHostName
+$Result = Invoke-WebRequest "http://$ISAName/wpad.dat" -outfile "c:\scripts\wpad.dat" -PassThru
+$Services = Get-Service -Name isactrl –RequiredServices
+$TMGServices = "fwsrv","isasched","IsaManagedCtrl","ISASTG"
+
+
+If ($Result.StatusCode -eq "200")
+    {
+    Write-Host "OK1" -ForegroundColor Green
+    }
+    else
+    {
+    Get-Service 'ReportServer$ISARS' | Stop-Service -Force
+    Wait-Event -Timeout 15
+    Get-Service 'isactrl' | Restart-Service -Force
+    Wait-Event -Timeout 20
+    foreach ($TMGService in $TMGServices)
+    {
+        If ((get-service $TMGService).Status -notlike "Running")
+        {
+        Get-Service $TMGService | Start-service
+        }
+    }
+    Wait-Event -Timeout 15
+    Write-Host "NotOK" -ForegroundColor Green
+    Send-MailMessage -To $EmailRecipients -From $SENDEREMAIL -SmtpServer $SMTPServer -Subject "WPAD on TMG Server $env:COMPUTERNAME has been fixed" -Body "WPAD on TMG Server $env:COMPUTERNAME has been fixed" -BodyAsHtml -Encoding ([System.Text.Encoding]::UTF8)
+    }
+$Result = Invoke-WebRequest "http://$ISAName/wpad.dat" -outfile "c:\scripts\wpad.dat" -PassThru
+If ($Result.StatusCode -eq "200")
+    {
+    Write-Host "OK" -ForegroundColor Green
+    }
+    else
+    {
+    Send-MailMessage -To $EmailRecipients -From $SENDEREMAIL -SmtpServer $SMTPServer -Subject "WPAD on TMG Server $env:COMPUTERNAME could't been fixed" -Body "WPAD on TMG Server $env:COMPUTERNAME could't been fixed" -BodyAsHtml -Encoding ([System.Text.Encoding]::UTF8)
+    Write-Host "NOK" -ForegroundColor Green
+    }
+ Remove-Item -Path "C:\Scripts\wpad.dat"
