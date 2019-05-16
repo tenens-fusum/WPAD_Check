@@ -17,7 +17,10 @@ $Result = Invoke-WebRequest "http://$ISAName/wpad.dat" -outfile "c:\scripts\wpad
 $Services = Get-Service -Name isactrl –RequiredServices
 $TMGServices = "fwsrv","isasched","IsaManagedCtrl","ISASTG"
 
-
+If (($host.version).Major -lt "5")
+    {
+    Send-MailMessage -To $EmailRecipients -From $SENDEREMAIL -SmtpServer $SMTPServer -Subject "Powershell on $env:COMPUTERNAME is old" -Body "Powershell on $env:COMPUTERNAME is old. Current version ($host.version).Major" -BodyAsHtml -Encoding ([System.Text.Encoding]::UTF8)
+    }
 If ($Result.StatusCode -eq "200")
     {
     Write-Host "OK1" -ForegroundColor Green
